@@ -1,0 +1,82 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Django
+*.log
+*.pot
+*.pyc
+*.pyo
+*.sqlite3
+*.db
+local_settings.py
+settings_local.py
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Migrations
+**/migrations/*.pyc
+**/migrations/*.pyo
+**/migrations/*.log
+**/migrations/__pycache__/
+
+# Test and coverage
+htmlcov/
+.coverage
+.tox/
+.nox/
+.pytest_cache/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# Others
+*.bak
+*.swp
+*.swo
+
+# Static and media
+staticfiles/
+media/
+
+# MySQL
+*.sql
+
+# Postgres
+*.psql
+*.pgsql
+
+# Docker
+*.pid
+
+# Node
+node_modules/
+
+# Other IDEs
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*~
+
+# Ignore secrets
+secrets.json
