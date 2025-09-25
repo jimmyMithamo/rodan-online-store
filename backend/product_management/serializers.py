@@ -141,14 +141,17 @@ class ProductVariationSerializer(serializers.ModelSerializer):
     effective_images = serializers.ReadOnlyField()
     is_in_stock = serializers.ReadOnlyField()
     sku = serializers.CharField(required=False, allow_blank=True, help_text="Leave blank to auto-generate")
+    discounted_price = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariation
         fields = [
-            'id', 'product', 'sku', 'price', 'stock_quantity', 'images',
+            'id', 'product', 'sku', 'price', 'discounted_price', 'stock_quantity', 'images',
             'variations_attributes', 'display_attributes', 'effective_images',
             'is_in_stock', 'is_active', 'created_at', 'updated_at'
         ]
+    def get_discounted_price(self, obj):
+        return obj.discounted_price
 
     def validate_sku(self, value):
         """Validate SKU uniqueness only if provided"""

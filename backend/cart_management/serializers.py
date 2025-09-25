@@ -9,6 +9,13 @@ class CartItemSerializer(serializers.ModelSerializer):
     variation_details = ProductVariationSerializer(source='product_variation', read_only=True)
     unit_price = serializers.ReadOnlyField()
     subtotal = serializers.ReadOnlyField()
+    discounted_price = serializers.SerializerMethodField()
+    def get_discounted_price(self, obj):
+        # If variation exists and has a discount, use its discounted price
+        if obj.product_variation:
+            return getattr(obj.product_variation, 'discounted_price', None)
+        # Otherwise, use product's discounted price
+        return getattr(obj.product, 'discounted_price', None)
     product_name = serializers.ReadOnlyField()
     product_sku = serializers.ReadOnlyField()
     is_available = serializers.ReadOnlyField()
@@ -17,7 +24,7 @@ class CartItemSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = [
             'id', 'product', 'product_variation', 'quantity', 'unit_price',
-            'subtotal', 'product_name', 'product_sku', 'is_available',
+            'subtotal', 'discounted_price', 'product_name', 'product_sku', 'is_available',
             'product_details', 'variation_details', 'created_at', 'updated_at'
         ]
         read_only_fields = ['cart', 'created_at', 'updated_at']
@@ -130,7 +137,21 @@ class CartItemUpdateSerializer(serializers.ModelSerializer):
 class CartSerializer(serializers.ModelSerializer):
     """Serializer for Cart model"""
     items = CartItemSerializer(many=True, read_only=True)
-    cart_total = serializers.ReadOnlyField()
+    cart_total = serializers.SerializerMethodField()
+    def get_cart_total(self, obj):
+        # Use discounted price if available, else fallback to unit_price
+        total = 0
+        for item in obj.items.all():
+            discounted = None
+            if hasattr(item, 'product_variation') and item.product_variation:
+                discounted = getattr(item.product_variation, 'discounted_price', None)
+            if discounted is None:
+                discounted = getattr(item.product, 'discounted_price', None)
+            if discounted is not None and float(discounted) < float(item.unit_price):
+                total += float(discounted) * item.quantity
+            else:
+                total += float(item.unit_price) * item.quantity
+        return total
     total_items = serializers.ReadOnlyField()
     unique_items_count = serializers.ReadOnlyField()
 

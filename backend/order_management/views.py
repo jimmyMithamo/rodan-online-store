@@ -228,15 +228,28 @@ class OrderViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
+            # Use discounted price if available
+            discounted_price = None
+            if cart_item.product_variation and hasattr(cart_item.product_variation, 'discounted_price'):
+                discounted_price = cart_item.product_variation.discounted_price
+            elif hasattr(cart_item.product, 'discounted_price'):
+                discounted_price = cart_item.product.discounted_price
+
+            unit_price = discounted_price if discounted_price and float(discounted_price) < float(cart_item.unit_price) else cart_item.unit_price
+            # Round unit_price to 2 decimal places
+            try:
+                from decimal import Decimal
+                unit_price = Decimal(unit_price).quantize(Decimal('0.01'))
+            except Exception:
+                pass
+
             item_data = {
                 'product': cart_item.product.id,
                 'quantity': cart_item.quantity,
-                'unit_price': cart_item.unit_price
+                'unit_price': unit_price
             }
-            
             if cart_item.product_variation:
                 item_data['product_variation'] = cart_item.product_variation.id
-            
             items_data.append(item_data)
         
         # Create order data
@@ -262,10 +275,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
             
             # Return order details
-            order_serializer = OrderDetailSerializer(order)
             return Response({
                 'message': 'Order created successfully from cart',
-                'order': order_serializer.data
+                'id': order.id
             }, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

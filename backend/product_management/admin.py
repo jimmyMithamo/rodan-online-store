@@ -148,7 +148,7 @@ class ProductAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    readonly_fields = ['rating' ]
+    readonly_fields = ['rating', 'show_variation_attributes']
     ordering = ['-created_at']
     
     def save_model(self, request, obj, form, change):
@@ -184,6 +184,21 @@ class ProductAdmin(admin.ModelAdmin):
             product.images = image_urls
             product.save(update_fields=['images'])
 
+    def show_variation_attributes(self, obj):
+        """Show attributes used in product variations"""
+        attrs = set()
+        if hasattr(obj, 'attributes') and obj.attributes:
+            if hasattr(obj.attributes, 'all'):
+                attrs.update([a.name for a in obj.attributes.all()])
+            elif isinstance(obj.attributes, list):
+                attrs.update([getattr(a, 'name', str(a)) for a in obj.attributes])
+        for v in obj.variations.all():
+            if hasattr(v, 'variations_attributes') and hasattr(v.variations_attributes, 'all'):
+                for va in v.variations_attributes.all():
+                    attrs.add(getattr(va, 'attribute_name', str(va)))
+        return ', '.join(attrs) if attrs else '—'
+    show_variation_attributes.short_description = 'Variation Attributes'
+
 class ProductVariationValueInline(admin.TabularInline):
     model = ProductVariationValue
     extra = 1
@@ -192,7 +207,7 @@ class ProductVariationValueInline(admin.TabularInline):
 @admin.register(ProductVariation)
 class ProductVariationAdmin(admin.ModelAdmin):
     list_display = [
-        'product', 'sku', 'price', 'stock_quantity', 
+        'product', 'sku', 'price', 'discounted_price', 'stock_quantity',
         'display_attributes', 'is_active', 'created_at'
     ]
     list_filter = ['product', 'is_active', 'created_at']

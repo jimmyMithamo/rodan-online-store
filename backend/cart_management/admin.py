@@ -95,10 +95,6 @@ class CartItemAdmin(admin.ModelAdmin):
         ('Availability', {
             'fields': ('availability_status',),
             'classes': ('collapse',)
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
         })
     )
 

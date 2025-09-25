@@ -139,16 +139,26 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
         fields = ['product', 'product_variation', 'quantity', 'unit_price']
 
     def validate(self, attrs):
-        """Validate and set unit price"""
+        """Validate and set unit price, rounding to 2 decimal places if needed"""
         product = attrs['product']
         product_variation = attrs.get('product_variation')
-        
+
         # Set unit price from product or variation
         if product_variation:
             attrs['unit_price'] = product_variation.price
         else:
             attrs['unit_price'] = product.discounted_price
-        
+
+        # Round unit_price to 2 decimal places if more than 2 are provided
+        unit_price = attrs.get('unit_price')
+        if unit_price is not None:
+            try:
+                # Convert to Decimal and round
+                rounded_price = Decimal(unit_price).quantize(Decimal('0.01'))
+                attrs['unit_price'] = rounded_price
+            except Exception:
+                pass
+
         return super().validate(attrs)
 
 
@@ -156,12 +166,14 @@ class OrderListSerializer(serializers.ModelSerializer):
     """Serializer for order list view"""
     items_count = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
+    items = OrderItemSerializer(many=True, read_only=True)
     
     class Meta:
         model = Order
         fields = [
             'id', 'order_number', 'status', 'payment_method', 'total_amount',
-            'items_count', 'payment_status', 'created_at', 'updated_at'
+            'items_count', 'payment_status', 'created_at', 'updated_at',
+            'items'
         ]
 
     def get_items_count(self, obj):

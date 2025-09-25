@@ -321,10 +321,12 @@ class Product(models.Model):
     @property
     def discounted_price(self):
         """Calculate the price after discount"""
-        if self.discount_type and self.discount > 0:
-            if self.discount_type == 'percentage':
+        if self.price is None:
+            return 0
+        if self.discount_type and self.discount:
+            if self.discount_type == 'percentage' and self.discount > 0:
                 return self.price * (1 - self.discount / 100)
-            elif self.discount_type == 'fixed':
+            elif self.discount_type == 'fixed' and self.discount > 0:
                 return max(0, self.price - self.discount)
         return self.price
 
@@ -409,6 +411,9 @@ class Product(models.Model):
 class ProductVariation(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variations')
     sku = models.CharField(max_length=100, unique=True, blank=True, help_text="Leave blank to auto-generate")
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, validators=[MinValueValidator(0)])
+    discount_type = models.CharField(max_length=10, choices=Product.DISCOUNT_TYPE_CHOICES, null=True, blank=True)
+    discounted_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, validators=[MinValueValidator(0)])
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     stock_quantity = models.PositiveIntegerField(default=0)
     images = models.JSONField(default=list, blank=True)  # Fallback to product images if empty
@@ -422,6 +427,18 @@ class ProductVariation(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.sku}"
+
+    @property
+    def discounted_price(self):
+        """Calculate the price after discount"""
+        if self.price is None:
+            return 0
+        if self.discount_type and self.discount:
+            if self.discount_type == 'percentage' and self.discount > 0:
+                return self.price * (1 - self.discount / 100)
+            elif self.discount_type == 'fixed' and self.discount > 0:
+                return max(0, self.price - self.discount)
+        return self.price
 
     @property
     def is_in_stock(self):
