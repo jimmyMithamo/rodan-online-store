@@ -1223,8 +1223,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                     # Refresh the product instance to get updated images
                     product.refresh_from_db()
                 
+                # Always return serialized data
                 headers = self.get_success_headers(serializer.data)
-                # Return updated serializer data with images
                 fresh_serializer = self.get_serializer(product)
                 return Response(fresh_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
             else:
@@ -1241,21 +1241,22 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         logger.debug(f"🔧 DEBUG: ProductViewSet.update() called")
         logger.debug(f"🔧 DEBUG: Request data: {request.data}")
-        
+        print("[FRONTEND PAYLOAD]", dict(request.data))
+
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        
+
         logger.debug(f"🔧 DEBUG: Updating product: {instance.name} (ID: {instance.id})")
         logger.debug(f"🔧 DEBUG: Current product type: {instance.product_type}")
         logger.debug(f"🔧 DEBUG: Current price: {instance.price}")
-        
+
         # Extract image files from request
         image_files = []
         for key, value in request.FILES.items():
             if key.startswith('image_'):
                 image_files.append(value)
                 logger.debug(f"🔧 DEBUG: Found image file: {key} -> {value.name}")
-        
+
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         logger.debug(f"🔧 DEBUG: Serializer created, checking validity")
         
@@ -1302,8 +1303,12 @@ class ProductViewSet(viewsets.ModelViewSet):
                 if getattr(instance, '_prefetched_objects_cache', None):
                     instance._prefetched_objects_cache = {}
                 
-                # Return updated serializer data with fresh images
+                # Return only serialized data (fix for ProductAttribute serialization error)
                 fresh_serializer = self.get_serializer(product)
+                # If your serializer returns any related objects (like product_attributes),
+                # make sure those fields use a serializer, not a model instance or queryset.
+                # For example, in your ProductCreateUpdateSerializer/ProductDetailSerializer:
+                # product_attributes = ProductAttributeSerializer(many=True, read_only=True)
                 return Response(fresh_serializer.data)
             else:
                 logger.debug(f"🔧 DEBUG: Serializer validation failed")
@@ -1311,7 +1316,12 @@ class ProductViewSet(viewsets.ModelViewSet):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"🔧 DEBUG: Exception in update: {e}")
-            raise
+            # Instead of raising, return a proper error response
+            return Response({
+                'success': False,
+                'message': 'Internal server error',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _handle_image_uploads(self, product, image_files):
         """
