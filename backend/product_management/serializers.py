@@ -284,7 +284,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     variations = ProductVariationSerializer(many=True, read_only=True)
     reviews = serializers.SerializerMethodField()
     discounted_price = serializers.ReadOnlyField()
-    product_attributes = ProductAttributeSerializer(many=True, read_only=True)
+    product_attributes = ProductAttributeSerializer(source='attributes', many=True, read_only=True)
 
     is_in_stock = serializers.ReadOnlyField()
     average_rating = serializers.ReadOnlyField()
@@ -304,7 +304,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         """Get attributes for variable products"""
         if obj.product_type != 'variable':
             return []
-        return ProductAttributeSerializer(obj.attributes, many=True).data
+        # Now we can safely use the ManyToMany field since the property conflict is resolved
+        return ProductAttributeSerializer(obj.attributes.all(), many=True).data
 
     def get_reviews(self, obj):
         """Return approved reviews"""
@@ -322,11 +323,12 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
     description = serializers.CharField(required=False, allow_blank=True, help_text="Product description is optional")
     discount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True, help_text="Discount amount, defaults to 0")
     
-    # NEW: Accepts flexible data (IDs, or objects {name, value} for resolution)
-    attributes = serializers.JSONField(
-        required=False,
-        help_text="List of ProductAttribute IDs or list of {name, value} objects."
-    )
+       
+    # Add product_attributes field for proper serialization in responses
+    product_attributes = ProductAttributeSerializer(source='attributes', many=True, read_only=True)
+    
+    # Add tags field for proper serialization
+    tags = TagSerializer(many=True, read_only=True)
 
     product_images = serializers.SerializerMethodField()
 
@@ -336,7 +338,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             'id', 'name', 'product_type', 'category', 'parent_category', 'brand',
             'description', 'product_details', 'additional_information',
             'discount_type', 'discount', 'price', 'sku', 'stock_quantity',
-            'images', 'product_images', 'tags', 'attributes', 'is_active'
+            'images', 'product_images', 'tags', 'product_attributes', 'is_active'
         ]
 
     def get_product_images(self, obj):
@@ -508,6 +510,40 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             if hasattr(instance, "attributes") and hasattr(instance.attributes, "set") and isinstance(attributes_data, list):
                 instance.attributes.set(attributes_data)
         
+        # 🔧 BACKEND REPAIR: Handle missing product-level attributes for variable products
+        if (instance.product_type == 'variable' and 
+            (not attributes_data or len(attributes_data) == 0)):
+            
+            # Check if we have product_attributes data in the request
+            product_attributes_data = self.initial_data.get('product_attributes', [])
+            if product_attributes_data:
+                print("🔧 BACKEND REPAIR: Detecting missing product attributes, attempting repair...")
+                
+                # Extract attribute names and find/create the ProductAttribute records
+                attribute_ids_to_associate = []
+                
+                for attr_data in product_attributes_data:
+                    if isinstance(attr_data, dict) and 'name' in attr_data:
+                        attr_name = attr_data['name']
+                        try:
+                            # Find or create the ProductAttribute
+                            from .models import ProductAttribute
+                            product_attribute, created = ProductAttribute.objects.get_or_create(name=attr_name)
+                            attribute_ids_to_associate.append(product_attribute.id)
+                            
+                            if created:
+                                print(f"🔧 BACKEND REPAIR: Created ProductAttribute: {attr_name}")
+                            else:
+                                print(f"🔧 BACKEND REPAIR: Found existing ProductAttribute: {attr_name}")
+                                
+                        except Exception as e:
+                            print(f"🔧 BACKEND REPAIR: Error processing attribute {attr_name}: {e}")
+                
+                # Associate the attributes with the product
+                if attribute_ids_to_associate:
+                    instance.attributes.set(attribute_ids_to_associate)
+                    print(f"🔧 BACKEND REPAIR: Associated {len(attribute_ids_to_associate)} attributes with product")
+        
         if tags_data is not None:
             if hasattr(instance, "tags") and hasattr(instance.tags, "set") and isinstance(tags_data, list):
                 instance.tags.set(tags_data)
@@ -534,23 +570,29 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                 var_id = variation.get('id')
                 if var_id:
                     # Update existing variation
-                    ProductVariation.objects.filter(id=var_id, product=instance).update(
-                        sku=variation.get('sku', ''),
-                        price=variation.get('price', None),
-                        stock_quantity=variation.get('stock_quantity', None),
-                        is_active=variation.get('is_active', True),
-                        # Add other fields as needed
-                    )
+                    variation_obj = ProductVariation.objects.filter(id=var_id, product=instance).first()
+                    if variation_obj:
+                        variation_obj.sku = variation.get('sku', '')
+                        variation_obj.price = variation.get('price', None)
+                        variation_obj.stock_quantity = variation.get('stock_quantity', None)
+                        variation_obj.is_active = variation.get('is_active', True)
+                        variation_obj.save()
+                        
+                        # Process variations_attributes for existing variation
+                        self._update_variation_attributes(variation_obj, variation.get('variations_attributes', []))
                 else:
                     # Create new variation
-                    ProductVariation.objects.create(
+                    variation_obj = ProductVariation.objects.create(
                         product=instance,
                         sku=variation.get('sku', ''),
                         price=variation.get('price', None),
                         stock_quantity=variation.get('stock_quantity', None),
                         is_active=variation.get('is_active', True),
-                        # Add other fields as needed
                     )
+                    print("Created new variation:", variation)
+                    
+                    # Process variations_attributes for new variation
+                    self._update_variation_attributes(variation_obj, variation.get('variations_attributes', []))
         # --- END VARIATIONS UPDATE LOGIC ---
 
         # Update price for variable product based on minimum variation price (if any)
@@ -561,6 +603,46 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                 instance.save(update_fields=["price"])
             
         return instance
+
+    def _update_variation_attributes(self, variation_obj, variations_attributes):
+        """Helper method to update ProductVariationValue records for a variation"""
+        from .models import ProductVariationValue, ProductAttribute, AttributeValue
+        
+        # Clear existing variation values
+        ProductVariationValue.objects.filter(product_variation=variation_obj).delete()
+        
+        # Create new variation values
+        for attr_data in variations_attributes:
+            if not isinstance(attr_data, dict):
+                continue
+                
+            attr_name = attr_data.get('attribute_name')
+            attr_value = attr_data.get('value')
+            
+            if not attr_name or not attr_value:
+                continue
+                
+            try:
+                # Find or create the ProductAttribute
+                product_attribute, _ = ProductAttribute.objects.get_or_create(name=attr_name)
+                
+                # Find or create the AttributeValue
+                attribute_value, _ = AttributeValue.objects.get_or_create(
+                    attribute=product_attribute,
+                    value=attr_value
+                )
+                
+                # Create the ProductVariationValue
+                ProductVariationValue.objects.create(
+                    product_variation=variation_obj,
+                    attribute_value=attribute_value
+                )
+                
+                print(f"Created ProductVariationValue: {variation_obj.sku} -> {attr_name}: {attr_value}")
+                
+            except Exception as e:
+                print(f"Error creating variation attribute {attr_name}={attr_value}: {e}")
+                continue
 
 
 class ProductImageSerializer(serializers.ModelSerializer):

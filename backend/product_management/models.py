@@ -387,7 +387,7 @@ class Product(models.Model):
         super().save(*args, **kwargs)
 
     @property
-    def attributes(self):
+    def variation_attributes(self):
         """Get unique attributes used in this product's variations"""
         if self.product_type != 'variable':
             return ProductAttribute.objects.none()

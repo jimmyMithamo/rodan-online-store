@@ -1,0 +1,432 @@
++ Products:
+    + Smartphones
+        + Infinix
+        + Samsung
+        + Tecno
+        + Iphone
+        + Vivo
+        + Google pixel
+        + Honor
+        + Xiaomi
+        + Real me
+        + Itel
+        + Nokia
+        + Oppo
+        + Redmi
+        + Black view
+
+    + Audio
+        + Ear buds
+        + Headphones
+        + Speakers
+        + Soundbar
+
+    + Smartwatch
+        + Smartwatches
+        + Apple watch
+        + Galaxy watch
+        + Smart Bands
+
+    + Accessories
+        + Apple Accessories
+        + Samsing Accessories
+        + Chargers
+        + Powerbanks
+
+    + Storage
+        + Flash drives
+        + Hard drives
+        + Memory Cards
+        + Usb Hubs
+
+    + Gaming
+        + Accessories
+        + Gaming console
+        + Gaming controllers
+        + Gaming Headsets
+
++ Models:
+    + Product
+        + Name
+        + product-type : Simple or variable product
+        + Category
+        + Parent-category
+        + Brand
+        + Description
+        + Product-details
+        + Additional-information
+        + Discount_type : Percentage or KES
+        + Discount
+        + Price
+        + SKU
+        + Stock-quantity
+        + product_views(for tracking best sellers)
+        + quantity_sold
+        + Images
+        + Tags
+        + Reviews
+        + rating
+
+    + Reviews
+        + product_id
+        + user_id
+        + Review_text
+        + rating
+
+    + product_attribute:
+        + Name
+        + product_id ( many to many)
+
+    + Product_variation
+        + product_id
+        + SKU
+        + Price
+        + stock_quantity
+        + Images (fallback to original if not provided)
+        + Attribute_values ()
+    
+    + attribute_value:
+        + id
+        + attribute_id (FK to product_attribute)
+        + value
+
+    + variation_type:
+        + id
+        + name (e.g. Size, Color)
+
+    + product_variation_value:
+        + product_variation_id (FK)
+        + attribute_value_id (FK)
+    
+    + category
+        + name
+        + Parent
+        + Products
+
+    + tags
+        + name
+        + Products
+
+    + User
+        + Email
+        + Phonenumber
+        + Password
+        + Shipping_address
+
+    + Shipping_address
+        + user_id
+        + adress
+        + default_address(boolean)
+
+    + Cart
+        + user_id (FK -> user)
+        + cart_items ( many to many)
+        + cart_total (add all cart_item_subtotals)
+
+    + cart_items
+        + Cart_id
+        + product_id
+        + product_variation_id
+        + quantity
+        + cart_item_subtotal (product.price * quantity)
+    
+    + Order
+        + user_id
+        + order_items
+        + order_total
+
+    + order_items
+        + order_id
+        + product_id
+        + product_variation_id
+        + quantity
+        + order_item_subtotal
+
+    + Coupon:
+        + id
+        + code
+        + description
+        + discount_type (percentage, fixed, free shipping)
+        + discount_value
+        + usage_limit
+        + usage_limit_per_user
+        + minimum_order_amount
+        + start_date
+        + end_date
+        + is_active
+        + applicable_products (optional, many to many)
+        + applicable_categories (optional, many to many)
+        + created_at
+        + updated_at
+ 
+    + Payment
+        + order_id
+        + user_id
+        + payment_method
+        + payment_reference
+        + amount
+        + status
+        + paid_at
+
+    + Audit_log
+        + id
+        + user_id
+        + ip_address
+        + action
+        + timestamp
+        + details
+
++ Modules
+    + Product management
+        - Models:
+            + Product
+            + product_attribute
+            + product_variation
+            + attribute_value
+            + variation_type
+            + product_variation_value
+            + category
+            + tags
+            + reviews
+
+        - api endpoints:
+            + GET /products
+            + GET /products/{id}
+            + POST /products
+            + PUT /products/{id}
+            + DELETE /products/{id}
+
+            + GET /categories
+            + POST /categories
+            + PUT /categories/{id}
+            + DELETE /categories/{id}
+
+            + GET /tags
+            + POST /tags
+            + PUT /tags/{id}
+            + DELETE /tags/{id}
+
+            + GET /attributes
+            + POST /attributes
+            + PUT /attributes/{id}
+            + DELETE /attributes/{id}
+
+            + GET /products/{id}/variations
+            + POST /products/{id}/variations
+            + PUT /variations/{variation_id}
+            + DELETE /variations/{variation_id}
+
+            + GET /reviews
+            + POST /reviews
+            + PUT /reviews/{id}
+            + DELETE /reviews/{id}
+
+            // actions
+            + GET /products/best-sellers // query db for quantity_sold
+            + GET /products/newest // query in descending order by the created_at timestamp
+            + GET /products/pocket-friendly // query in ascending order (prices)
+            + GET /products/high-end // query in descending order
+            + GET /products/latest-accessories
+
+
+
+
+    + User management
+        - Models:
+            + user
+            + Shipping_address
+        
+        - api endpoints:
+            + POST /users (register)
+            + GET /users/{id}
+            + PUT /users/{id}
+            + DELETE /users/{id}
+            + POST /auth/login
+            + POST /auth/logout
+            + GET /users (list users)
+
+            + GET /shipping_address
+            + POST /shipping_address
+            + PUT /shipping_address/{id}
+            + DELETE /shipping_address/{id}
+
+    + Audit service
+        - modles:
+            + Audit_log
+
+        - api endpoints:
+            + GET /audit-logs
+            + GET /audit-logs/{id}
+            + POST /audit-logs
+
+    + Notification service
+        - api endpoints:
+            + POST /notifications
+            + GET /notifications
+            + GET /notifications/{id}
+            + PUT /notifications/{id}
+            + DELETE /notifications/{id}
+
+    + Order management
+        - models:
+            + cart
+            + cart_items
+            + order
+            + order_items
+            + coupons
+
+        - api endpoints:
+            + GET /cart
+            + POST /cart/items
+            + PUT /cart/items/{id}
+            + DELETE /cart/items/{id}
+
+            + GET /orders
+            + GET /orders/{id}
+            + POST /orders
+            + PUT /orders/{id}
+            + DELETE /orders/{id}
+
+            + GET /coupons
+            + POST /coupons
+            + PUT /coupons/{id}
+            + DELETE /coupons/{id}
+
+    + Payment service
+        - models:
+            + Payment
+
+        - api endpoints:
+            + POST /payments
+            + GET /payments
+            + GET /payments/{id}
+            + PUT /payments/{id}
+            + DELETE /payments/{id}
+
+
++ User journeys:
+    + Store manager:
+        + Creates a product
+        + Selects product type
+        + If simple:
+            + Fill in details for a simple product
+        + If variable product:
+            + Show fields for attributes and variations
+            + Create variations
+        + Saves the product
+
+    + User:
+        + User visits Store
+        + User clicks on item and adds to cart
+            + user gets a unique ID for the session
+        + Users goes to checkout and presses checkout if not editing cart items
+        + An order is created with a status CREATED
+        + User taken to order confirmation pay and selects the payment method (cash on delivery or when placing order)
+        + If cash on delivery:
+            + press confirm order order button to place an order
+            + Redirects to the order detail page
+        + else:
+            + user selects payment method (Mpesa, card etc)
+            + Process the payment
+                + If successful:
+                    + Redirect to order detail page
+                + else:
+                    + Notify user that the order has failed and the reason as to why
+                    + Send back to order confirmation page for a payment retry
+    ** User can view the following:
+        + Cart with cart items
+            + Should be able to update cart item quantity and remove items
+        + Orders
+            + All orders arranged with the most recent
+        + Order detail:
+            + Order detail page with order items for a specific order
+
+        + User profile if logged in
+            + add address
+            + Change Email
+            + Cahnge password ( sent otp using email)
+
++ Frontend File structure(pages):
+    + Pages:
+        + Homepage
+            - Campaigns(carousel with banners)
+            - 
+            - Categories (Image-> Name -> Subcategories)
+            - Pockect Friendly section(products from the db with the lowest prices)
+            - What's new ( fetch products that have been created recently)
+            - High end (products with the highest price)
+            - Best sellers (products with have many solds ._.)
+            - Brand of phone (eg. Samsung)
+            - Second brand of phone (eg. Infinix)
+            - Think different, Think apple (show apple products)
+            - New iphones
+            - Apple watches (banner and then phones)
+            - Campaigns(images with link to products)
+            - Gaming deals(all items in the gaming with biggest discounts)
+            - Latest accessories - from the accessories models
+            - Footer
+        + products page (should show when a user clicks a brad or a tag)
+        + Product detail page
+        + Cart page -> checkout
+        + Order confirmation -> payment
+        + Orders page
+        + order details page
+        + About
+        + Profile page
+        + Terms and condditions
+        + Privacy policy
+        + Shipping and return policy
+        + Contact page
+
+        + Admin dashboard
+        + Products page(filters by category, search)
+            + Quick edit modal
+        + Product page( create and edit new product)
+        + Orders page(filters, Search)
+            + Quick edit modal
+        + Order detail page
+        + payments page(filter by status)
+            + payment detail page
+
+    + Components:
+        + Login Component
+        + Sign up Component
+        + Navbar Component
+        + Categories component
+        + Footer
+        + Search bar Component
+        + Product card Component (boolen -border)** check for variation
+        + Button componet ( Buy now)
+        + Category card Component
+        + Tag Component
+        + Discount component
+        + cart item component
+        + Order item component
+        + Bread crumbs (show page name/category and the links)
+        + Latest product component(to be under the filter by price)
+        + Filter by price (highest to be the price with highest price on products)
+        + Toast component
+        + products skeletton
+        + pagination component
+        + Coupon input
+        + rating component
+        + Sorting component
+
+
+
+
+
+
+
+
+> What's left?
+    + user
+        + Profile page
+        + Remove wishlist and share button from productcard
+    + Admin
+        + Payments(disabled)
+        + Product create page revamp
+        + product edit revamp
+        + Users crud page(disabled)
+        + Banner management
+        + Settings(future)

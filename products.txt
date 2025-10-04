@@ -1,0 +1,116 @@
+Categories:
+    + Smartphones:
+        + Samsung:             
+            + Galaxy phones
+                - Galaxy A17 4G
+                - Galaxy A07 4G
+                - Galaxy A17 5G
+                - Galaxy Z Flip7 FE
+
+            + Galaxy watches
+                - Samsung Galaxy Watch Ultra (2025) 47mm (KSh 60,000, ~KSh 64,000)
+                - Samsung Galaxy Watch8 Classic (KSh 54,500, ~KSh 56,500)
+                - Samsung Galaxy Watch8 (KSh 35,000 – KSh 42,000)
+                - Samsung Galaxy Watch 7 (KSh 20,000 – KSh 23,000)
+                - Samsung Galaxy Watch Ultra (KSh 43,000, ~KSh 45,000)
+
+            + Galaxy tablets
+                - Samsung Galaxy Tab S10 FE Plus (KSh 58,000 – KSh 96,500)
+                - Samsung Galaxy Tab S10 FE (KSh 48,000 – KSh 83,000)
+                - Samsung Galaxy Tab S10 Ultra (KSh 111,000 – KSh 146,500)
+                - Samsung Galaxy Tab S10 Plus (KSh 114,000, ~KSh 117,000)
+                - Samsung Galaxy Tab A9 Plus (KSh 24,000 – KSh 27,500)
+
+            + Samsung accessories
+                - Samsung Galaxy Z Fold7 Grip Case (KSh 7,500 – KSh 10,500)
+                - Samsung Galaxy Tablet Cases (KSh 3,500, ~KSh 4,500)
+                - Samsung Galaxy Tablet Screen Protector (KSh 2,000, ~KSh 3,500)
+                - Samsung Galaxy Tablet Cases with Keyboard (KSh 6,000, ~KSh 7,000)
+                - Samsung Galaxy S Series Cases (KSh 2,000, ~KSh 2,500)
+
+        + Apple:
+            + iPhones
+                - Apple iPhone 16e
+                - Apple iPhone 16
+                - Apple iPhone 16 Plus
+                - Apple iPhone 16 Pro
+                - iPhone 16 Pro Max
+
+            + iPads
+                - Apple iPad 11 Gen A16 (2025)
+                - Apple iPad Air 13-inch M3 (2025)
+                - Apple iPad Air 11-inch M3
+                - Apple iPad Mini 7 2024
+                - Apple iPad Pro 11 M4 (2024)                
+
+            + Watches
+                - Apple Watch Series 10
+                - Apple Watch Series 9
+                - Apple Watch Ultra 2
+                - Apple Watch Ultra
+                - Apple Watch SE 2
+
+            + MacBooks
+                - 15-inch Apple MacBook Air M4
+                - 13-inch Apple MacBook Air M4
+                - 14-inch MacBook Pro M4 Max
+                - 16-inch MacBook Pro M4 Max
+                - 16-inch MacBook Pro M4 Pro
+
+    + Audio:
+        + Buds:
+            + Samsung Buds
+                - Samsung Galaxy Buds Core 
+                - Samsung Galaxy Buds 3 Pro
+                - Samsung Galaxy Buds 3
+                - Samsung Galaxy Buds FE
+                - Samsung Galaxy Buds 2 Pro
+
+            + Oraimo Airbuds
+                - Oraimo Airbuds 4
+                - Oraimo FreePods Pro
+                - Oraimo FreePods 3C
+                - Oraimo FreePods Lite
+                - Oraimo FreePods4
+
+        + AirPods:
+            + Apple
+                - Apple AirPods 4 ANC
+                - Apple AirPods 4
+                - Apple AirPods Pro 2
+                - Apple AirPods 3
+                - Apple AirPods 2
+
+        + Speakers:
+            + Sony Bluetooth Speakers
+                 - Sony XG300 X-Series Portable Wireless Speaker
+                 - Sony XB23 Extra Bass Portable Wireless Speaker
+                 - Sony SRS-XE200
+
+            + JBL Bluetooth Speakers
+                 - JBL Flip 7
+                 - JBL Charge 6
+                 - JBL Boombox 3 Wi-Fi
+                 - JBL PartyBox Stage 320
+                 - JBL Go 4
+
+            + Anker Bluetooth Speakers
+                 - Anker Soundcore Pyro Mini 6W
+                 - Anker Soundcore Motion X600 50W
+                 - Anker Soundcore Boom 2 80W
+                 - Anker Soundcore Motion 300
+                 - Anker Flare Mini 10W
+
+        + Headphones:
+            + JBL
+                -
+
+            + Promate
+                - 
+
+            + Sony
+                -
+
+        + Soundbar:
+            + JBL
+                - 
