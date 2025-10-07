@@ -6,5 +6,4 @@ psycopg2-binary
 python-dotenv
 drf-yasg
 django-cors-headers
-gunicorn
 djangorestframework-simplejwt
