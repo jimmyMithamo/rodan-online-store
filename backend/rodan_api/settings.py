@@ -242,6 +242,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://rodan-frontend-kfnh.vercel.app"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
