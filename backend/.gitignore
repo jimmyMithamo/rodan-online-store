@@ -32,13 +32,7 @@ settings_local.py
 .env.production
 .env.staging
 
-# Django static and media files
-/static/
-/staticfiles/
-/media/
-collected-static/
-static_root/
-//
+
 # Django secret key
 secret_key.txt
 
