@@ -18,7 +18,6 @@ ENV/
 .python-version
 
 # Django
-*.log
 *.pot
 *.pyc
 *.pyo
@@ -101,11 +100,7 @@ dump.rdb
 Dockerfile.prod
 docker-compose.prod.yml
 
-# Node (if using any frontend build tools)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+
 
 # API Documentation
 api_docs/

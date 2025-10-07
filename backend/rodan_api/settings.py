@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-vom!hxctm#@ms=)9x0cf9xuifh)i!tnas1c$zkdd0ec3gh+yq+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['codeperfectsolutions.co.ke', 'localhost']
+ALLOWED_HOSTS = ['codeperfectsolutions.co.ke', 'localhost', 'rodan.codeperfectsolutions.co.ke']
 
 
 # Application definition
