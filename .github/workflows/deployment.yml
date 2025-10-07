@@ -1,0 +1,21 @@
+name: Deploy to cPanel
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    FTP-Deploy-Action:
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 2
+
+            - name: FTP Deploy to cPanel
+              uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+              with:
+                  server: ${{ secrets.FTP_SERVER }}
+                  username: ${{ secrets.FTP_USERNAME }}
+                  password: ${{ secrets.FTP_PASSWORD }}
+                  local-dir: ./backend/
