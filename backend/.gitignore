@@ -89,10 +89,7 @@ celerybeat.pid
 # Redis dump file
 dump.rdb
 
-# Logs
-logs/
-*.log
-log.txt
+
 
 # Database files
 *.sql
