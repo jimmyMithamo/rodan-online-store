@@ -7,3 +7,4 @@ python-dotenv
 drf-yasg
 django-cors-headers
 djangorestframework-simplejwt
+whitenoise
