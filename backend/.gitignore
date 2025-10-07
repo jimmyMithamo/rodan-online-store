@@ -39,7 +39,7 @@ settings_local.py
 /media/
 collected-static/
 static_root/
-
+//
 # Django secret key
 secret_key.txt
 
