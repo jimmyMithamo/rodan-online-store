@@ -497,6 +497,25 @@ class ProductViewSet(viewsets.ModelViewSet):
                 'errors': {'detail': ['Product does not exist']}
             }, status=status.HTTP_404_NOT_FOUND)
 
+    def destroy(self, request, *args, **kwargs):
+        """
+        Override destroy to handle product deletion
+        """
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response({
+                'success': True,
+                'message': 'Product deleted successfully'
+            }, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            logger.error(f"Error deleting product: {str(e)}")
+            return Response({
+                'success': False,
+                'message': 'Product not found',
+                'errors': {'detail': ['Product does not exist']}
+            }, status=status.HTTP_404_NOT_FOUND)
+
     @action(detail=False, methods=['get'])
     def featured(self, request):
         """Get featured products (highest rated or most viewed)"""
