@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-vom!hxctm#@ms=)9x0cf9xuifh)i!tnas1c$zkdd0ec3gh+yq+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['codeperfectsolutions.co.ke', 'localhost', 'rodan.codeperfectsolutions.co.ke']
+ALLOWED_HOSTS = ['codeperfectsolutions.co.ke', 'localhost', 'rodan.codeperfectsolutions.co.ke','127.0.0.1']
 
 
 # Application definition
@@ -240,8 +240,10 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3001",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
     "https://rodan-frontend-kfnh.vercel.app"
 ]
 

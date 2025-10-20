@@ -256,9 +256,30 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         except serializers.ValidationError as e:
             # Handle authentication errors with better messages
             if 'non_field_errors' in e.detail:
-                raise serializers.ValidationError({
-                    'non_field_errors': ['Invalid email or password']
-                })
+                error_message = str(e.detail['non_field_errors'][0])
+                
+                # Check if user exists to provide more specific error
+                try:
+                    user_exists = User.objects.filter(email=email).exists()
+                    if not user_exists:
+                        raise serializers.ValidationError({
+                            'non_field_errors': ['Account not found with this email address']
+                        })
+                    else:
+                        # User exists but credentials are wrong
+                        user = User.objects.filter(email=email).first()
+                        if not user.is_active:
+                            raise serializers.ValidationError({
+                                'non_field_errors': ['Account is inactive. Please contact support.']
+                            })
+                        else:
+                            raise serializers.ValidationError({
+                                'non_field_errors': ['Incorrect password']
+                            })
+                except User.DoesNotExist:
+                    raise serializers.ValidationError({
+                        'non_field_errors': ['Account not found with this email address']
+                    })
             raise e
         
         # Add user data to the response

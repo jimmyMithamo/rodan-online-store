@@ -21,7 +21,6 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Django
-*.log
 *.pot
 *.pyc
 *.pyo
@@ -36,12 +35,7 @@ settings_local.py
 .env.production
 .env.staging
 
-# Django static and media files
-/static/
-/staticfiles/
-/media/
-collected-static/
-static_root/
+
 
 # Django secret key and sensitive files
 secret_key.txt
@@ -80,11 +74,6 @@ coverage.xml
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Django logs
-logs/
-*.log
-log.txt
-django.log
 
 # Celery
 celerybeat-schedule

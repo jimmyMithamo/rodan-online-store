@@ -309,6 +309,29 @@ class ProductAttributeViewSet(viewsets.ModelViewSet):
         
         return [permission() for permission in permission_classes]
 
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new product attribute or return existing one if name already exists
+        """
+        name = request.data.get('name')
+        if not name:
+            return Response({
+                'error': 'Name is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Try to get existing attribute
+        try:
+            existing_attribute = ProductAttribute.objects.get(name=name)
+            serializer = self.get_serializer(existing_attribute)
+            return Response({
+                'message': f'Attribute "{name}" already exists',
+                'existing': True,
+                **serializer.data
+            }, status=status.HTTP_200_OK)
+        except ProductAttribute.DoesNotExist:
+            # Create new attribute if it doesn't exist
+            return super().create(request, *args, **kwargs)
+
 
 class AttributeValueViewSet(viewsets.ModelViewSet):
     queryset = AttributeValue.objects.all()
@@ -330,6 +353,36 @@ class AttributeValueViewSet(viewsets.ModelViewSet):
             permission_classes = [permissions.IsAdminUser]
         
         return [permission() for permission in permission_classes]
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new attribute value or return existing one if value already exists for the attribute
+        """
+        value = request.data.get('value')
+        attribute_id = request.data.get('attribute')
+        
+        if not value:
+            return Response({
+                'error': 'Value is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not attribute_id:
+            return Response({
+                'error': 'Attribute is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Try to get existing attribute value
+        try:
+            existing_value = AttributeValue.objects.get(value=value, attribute_id=attribute_id)
+            serializer = self.get_serializer(existing_value)
+            return Response({
+                'message': f'Attribute value "{value}" already exists for this attribute',
+                'existing': True,
+                **serializer.data
+            }, status=status.HTTP_200_OK)
+        except AttributeValue.DoesNotExist:
+            # Create new attribute value if it doesn't exist
+            return super().create(request, *args, **kwargs)
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -427,6 +480,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         Override retrieve to increment product views
         """
+        print("🔍 DEBUG: Entered ProductViewSet.retrieve()")
         try:
             instance = self.get_object()
             instance.increment_views()
@@ -1244,6 +1298,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         print("[FRONTEND PAYLOAD]", dict(request.data))
 
         partial = kwargs.pop('partial', False)
+        
+        # Force partial update if only specific fields are being updated
+        # This helps with step-by-step product creation workflow
+        if not partial and len(request.data) <= 5:  # Small number of fields suggests partial update
+            partial = True
+            logger.debug(f"🔧 DEBUG: Forcing partial update due to limited fields: {list(request.data.keys())}")
+        
         instance = self.get_object()
 
         logger.debug(f"🔧 DEBUG: Updating product: {instance.name} (ID: {instance.id})")

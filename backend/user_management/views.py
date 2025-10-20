@@ -3,10 +3,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
+from django.contrib.auth import authenticate
 import logging
 from .models import User, ShippingAddress
+from django.contrib.auth import get_user_model
 from .serializers import (
     UserRegistrationSerializer, 
     UserSerializer, 
@@ -220,7 +223,7 @@ class ShippingAddressViewSet(viewsets.ModelViewSet):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
-    
+
     def post(self, request, *args, **kwargs):
         """Custom login with better error handling"""
         try:
@@ -232,26 +235,71 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                     **serializer.validated_data
                 }, status=status.HTTP_200_OK)
             else:
-                # Handle specific authentication errors
                 errors = serializer.errors
+                message = 'Login failed'
+                # Specific error handling
                 if 'non_field_errors' in errors:
-                    message = 'Invalid credentials'
+                    error_text = errors['non_field_errors'][0]
+                    if 'No active account found' in error_text:
+                        message = 'Account not found or inactive'
+                    elif 'Unable to log in with provided credentials' in error_text:
+                        # Check if user exists
+                        UserModel = get_user_model()
+                        email = request.data.get('email')
+                        user_exists = UserModel.objects.filter(email=email).exists()
+                        if not user_exists:
+                            message = 'Account not found'
+                        else:
+                            message = 'Incorrect password'
+                    else:
+                        message = error_text
                 elif 'email' in errors:
                     message = 'Please provide a valid email address'
                 elif 'password' in errors:
                     message = 'Password is required'
-                else:
-                    message = 'Login failed'
-                
                 return Response({
                     'success': False,
                     'message': message,
                     'errors': errors
                 }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.error(f"Unexpected error during login: {str(e)}")
+        except (InvalidToken, TokenError) as e:
+            logger.error(f"JWT Token error during login: {str(e)}")
+            # Handle JWT specific errors
+            if 'No active account found' in str(e):
+                UserModel = get_user_model()
+                email = request.data.get('email')
+                user_exists = UserModel.objects.filter(email=email).exists()
+                if not user_exists:
+                    message = 'Account not found, please register'
+                else:
+                    message = 'Account is inactive or credentials are incorrect'
+            else:
+                message = 'Invalid credentials'
             return Response({
                 'success': False,
-                'message': 'An unexpected error occurred during login',
-                'errors': {'non_field_errors': ['Please try again later']}
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                'message': message,
+                'errors': {'non_field_errors': [message]}
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Unexpected error during login: {str(e)}")
+            # Check if the error message contains authentication specific info
+            error_str = str(e)
+            if 'No active account found' in error_str:
+                UserModel = get_user_model()
+                email = request.data.get('email')
+                user_exists = UserModel.objects.filter(email=email).exists()
+                if not user_exists:
+                    message = 'Account not found'
+                else:
+                    message = 'Account is inactive or credentials are incorrect'
+                return Response({
+                    'success': False,
+                    'message': message,
+                    'errors': {'non_field_errors': [message]}
+                }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    'success': False,
+                    'message': 'An unexpected error occurred',
+                    'errors': {'non_field_errors': ['Please try again later']}
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

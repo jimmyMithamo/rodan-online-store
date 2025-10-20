@@ -116,7 +116,7 @@ class ReviewInline(admin.TabularInline):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = [
-        'name', 'brand', 'category', 'product_type', 'price', 
+        'name', 'brand', 'category', 'product_type', 'price', 'show_attributes',
         'discounted_price', 'stock_quantity', 'is_in_stock', 
         'rating', 'product_views', 'quantity_sold', 'is_active', 'created_at'
     ]
@@ -135,7 +135,7 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ('category', 'parent_category', 'tags')
         }),
         ('Content', {
-            'fields': ('description', 'product_details', 'additional_information')
+            'fields': ('description', 'product_details', 'additional_information', 'attributes', )
         }),
         ('Pricing & Discount', {
             'fields': ('price', 'discount_type', 'discount')
@@ -150,6 +150,18 @@ class ProductAdmin(admin.ModelAdmin):
     )
     readonly_fields = ['rating', 'show_variation_attributes']
     ordering = ['-created_at']
+    
+    def show_attributes(self, obj):
+        """Display product attributes"""
+        if hasattr(obj, 'attributes') and obj.attributes:
+            if hasattr(obj.attributes, 'all'):
+                attrs = [a.name for a in obj.attributes.all()]
+                return ', '.join(attrs) if attrs else '—'
+            elif isinstance(obj.attributes, list):
+                attrs = [getattr(a, 'name', str(a)) for a in obj.attributes]
+                return ', '.join(attrs) if attrs else '—'
+        return '—'
+    show_attributes.short_description = 'Attributes'
     
     def save_model(self, request, obj, form, change):
         """Save the product and update images field from related ProductImage objects"""
