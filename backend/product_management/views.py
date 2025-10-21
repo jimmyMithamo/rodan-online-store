@@ -482,7 +482,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         Override retrieve to increment product views
         """
-        print("🔍 DEBUG: Entered ProductViewSet.retrieve()")
+        print(" DEBUG: Entered ProductViewSet.retrieve()")
         try:
             instance = self.get_object()
             instance.increment_views()
