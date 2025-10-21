@@ -574,8 +574,6 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             except (json.JSONDecodeError, TypeError):
                 variations_data = []
         
-        print(f"🔧 DEBUG: Creating product with {len(variations_data)} variations")
-        print(f"🔧 DEBUG: Variations data: {variations_data}")
         
         product = Product.objects.create(**validated_data)
         
@@ -590,7 +588,6 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             
             for i, variation_data in enumerate(variations_data):
                 try:
-                    print(f"🔧 DEBUG: Processing variation {i}: {variation_data}")
                     
                     # Extract variations_attributes
                     variations_attributes = variation_data.pop('variations_attributes', [])
@@ -630,7 +627,6 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                         is_active=is_active
                     )
                     
-                    print(f"🔧 DEBUG: Created variation {variation.id}")
                     
                     # Handle variations_attributes
                     if variations_attributes:
@@ -639,7 +635,6 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                             attribute_value = attr_data.get('value', '').strip()
                             
                             if attribute_name and attribute_value:
-                                print(f"🔧 DEBUG: Creating attribute {attribute_name} = {attribute_value}")
                                 
                                 # Find or create the ProductAttribute
                                 attribute, created = ProductAttribute.objects.get_or_create(
@@ -648,7 +643,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                                 )
                                 
                                 if created:
-                                    print(f"🔧 DEBUG: Created new attribute: {attribute_name}")
+                                    print(f"DEBUG: Created new attribute: {attribute_name}")
                                 
                                 # Find or create the AttributeValue
                                 attribute_value_obj, created = AttributeValue.objects.get_or_create(
@@ -658,7 +653,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                                 )
                                 
                                 if created:
-                                    print(f"🔧 DEBUG: Created new attribute value: {attribute_value}")
+                                    print(f" DEBUG: Created new attribute value: {attribute_value}")
                                 
                                 # Create the ProductVariationValue
                                 ProductVariationValue.objects.create(
@@ -666,18 +661,18 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                                     attribute_value=attribute_value_obj
                                 )
                                 
-                                print(f"🔧 DEBUG: Created ProductVariationValue for variation {variation.id}")
+                                print(f" DEBUG: Created ProductVariationValue for variation {variation.id}")
                     
                     created_variations.append(variation)
                     
                 except Exception as e:
-                    print(f"❌ ERROR: Failed to create variation {i}: {str(e)}")
+                    print(f" ERROR: Failed to create variation {i}: {str(e)}")
                     import traceback
-                    print(f"❌ ERROR: Traceback: {traceback.format_exc()}")
+                    print(f" ERROR: Traceback: {traceback.format_exc()}")
                     # Continue with other variations even if one fails
                     continue
             
-            print(f"🔧 DEBUG: Successfully created {len(created_variations)} variations")
+            print(f" DEBUG: Successfully created {len(created_variations)} variations")
             
             # Auto-associate attributes used in variations with the product
             if created_variations:
@@ -697,7 +692,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
         
         if attribute_ids:
             product.attributes.add(*attribute_ids)
-            print(f"🔧 DEBUG: Auto-associated {len(attribute_ids)} attributes with product")
+            print(f" DEBUG: Auto-associated {len(attribute_ids)} attributes with product")
 
     @transaction.atomic
     def update(self, instance, validated_data):
@@ -722,14 +717,14 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             if hasattr(instance, "attributes") and hasattr(instance.attributes, "set") and isinstance(attributes_data, list):
                 instance.attributes.set(attributes_data)
         
-        # 🔧 BACKEND REPAIR: Handle missing product-level attributes for variable products
+        #  BACKEND REPAIR: Handle missing product-level attributes for variable products
         if (instance.product_type == 'variable' and 
             (not attributes_data or len(attributes_data) == 0)):
             
             # Check if we have product_attributes data in the request
             product_attributes_data = self.initial_data.get('product_attributes', [])
             if product_attributes_data:
-                print("🔧 BACKEND REPAIR: Detecting missing product attributes, attempting repair...")
+                print(" BACKEND REPAIR: Detecting missing product attributes, attempting repair...")
                 
                 # Extract attribute names and find/create the ProductAttribute records
                 attribute_ids_to_associate = []
@@ -744,17 +739,17 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                             attribute_ids_to_associate.append(product_attribute.id)
                             
                             if created:
-                                print(f"🔧 BACKEND REPAIR: Created ProductAttribute: {attr_name}")
+                                print(f" BACKEND REPAIR: Created ProductAttribute: {attr_name}")
                             else:
-                                print(f"🔧 BACKEND REPAIR: Found existing ProductAttribute: {attr_name}")
+                                print(f" BACKEND REPAIR: Found existing ProductAttribute: {attr_name}")
                                 
                         except Exception as e:
-                            print(f"🔧 BACKEND REPAIR: Error processing attribute {attr_name}: {e}")
+                            print(f" BACKEND REPAIR: Error processing attribute {attr_name}: {e}")
                 
                 # Associate the attributes with the product
                 if attribute_ids_to_associate:
                     instance.attributes.set(attribute_ids_to_associate)
-                    print(f"🔧 BACKEND REPAIR: Associated {len(attribute_ids_to_associate)} attributes with product")
+                    print(f" BACKEND REPAIR: Associated {len(attribute_ids_to_associate)} attributes with product")
         
         # --- VARIATIONS UPDATE LOGIC ---
         if variations_data is not None:
@@ -765,8 +760,8 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                 except (json.JSONDecodeError, TypeError):
                     variations_data = []
             
-            print(f"🔧 DEBUG: Updating product with {len(variations_data)} variations")
-            print(f"🔧 DEBUG: Variations data: {variations_data}")
+            print(f" DEBUG: Updating product with {len(variations_data)} variations")
+            print(f" DEBUG: Variations data: {variations_data}")
             
             from .models import ProductVariation, ProductVariationValue, ProductAttribute, AttributeValue
             
@@ -839,9 +834,9 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                         self._update_variation_attributes(variation_obj, variations_attributes)
                         created_variations.append(variation_obj)
                     except Exception as e:
-                        print(f"❌ ERROR: Failed to create new variation: {str(e)}")
+                        print(f" ERROR: Failed to create new variation: {str(e)}")
                         import traceback
-                        print(f"❌ ERROR: Traceback: {traceback.format_exc()}")
+                        print(f" ERROR: Traceback: {traceback.format_exc()}")
             
             # Auto-associate attributes used in variations with the product
             if created_variations:
