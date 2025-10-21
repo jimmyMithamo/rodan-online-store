@@ -386,6 +386,7 @@ class AttributeValueViewSet(viewsets.ModelViewSet):
 
 
 class ProductViewSet(viewsets.ModelViewSet):
+   
     queryset = Product.objects.all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -393,6 +394,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'brand__name', 'description', 'sku']
     ordering_fields = ['name', 'brand__name', 'price', 'rating', 'created_at', 'product_views', 'quantity_sold']
     ordering = ['-created_at']
+    lookup_field = 'id'
 
     def get_all_subcategories(self, category):
         """Recursively get all subcategories including the category itself"""
@@ -498,22 +500,19 @@ class ProductViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_404_NOT_FOUND)
 
     def destroy(self, request, *args, **kwargs):
-        """
-        Override destroy to handle product deletion
-        """
+        product_id = kwargs.get('pk')
         try:
-            instance = self.get_object()
-            instance.delete()
+            product = Product.objects.get(id=product_id)
+            product_name = product.name
+            product.delete()
             return Response({
                 'success': True,
-                'message': 'Product deleted successfully'
+                'message': f'Product "{product_name}" deleted successfully'
             }, status=status.HTTP_204_NO_CONTENT)
-        except Exception as e:
-            logger.error(f"Error deleting product: {str(e)}")
+        except Product.DoesNotExist:
             return Response({
                 'success': False,
-                'message': 'Product not found',
-                'errors': {'detail': ['Product does not exist']}
+                'message': f'Product with ID {product_id} not found'
             }, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=False, methods=['get'])
