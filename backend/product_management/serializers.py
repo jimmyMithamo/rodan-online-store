@@ -21,7 +21,6 @@ class BannerSerializer(serializers.ModelSerializer):
         ]
 
 class CategorySerializer(serializers.ModelSerializer):
-    subcategories = serializers.SerializerMethodField()
     hierarchy = serializers.ReadOnlyField(source='get_hierarchy')
     image_source = serializers.ReadOnlyField()
     
@@ -29,7 +28,7 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = [
             'id', 'name', 'parent', 'description', 'image', 'image_url', 
-            'image_source', 'subcategories', 'hierarchy', 
+            'image_source', 'hierarchy', 
             'created_at', 'updated_at'
         ]
 
