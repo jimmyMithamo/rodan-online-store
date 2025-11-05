@@ -385,12 +385,15 @@ class AttributeValueViewSet(viewsets.ModelViewSet):
             return super().create(request, *args, **kwargs)
 
 
+
+
+
 class ProductViewSet(viewsets.ModelViewSet):
    
     queryset = Product.objects.all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['brand', 'product_type', 'is_active', 'tags', 'category']
+    filterset_fields = ['brand', 'product_type', 'is_active', 'tags']
     search_fields = ['name', 'brand__name', 'description', 'sku', 'category__name']
     ordering_fields = ['name', 'brand__name', 'price', 'rating', 'created_at', 'product_views', 'quantity_sold']
     ordering = ['-created_at']
@@ -406,44 +409,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         return subcategories
     
 
-    def get_queryset(self):
-        """
-        Optionally restricts the returned products based on user permissions
-        and handles category filtering with subcategories
-        """
-        queryset = Product.objects.select_related('category', 'brand').prefetch_related(
-            'tags', 
-            'reviews',
-            'variations__attribute_values__attribute',
-            'variations__attribute_values',
-            'variations__productvariationvalue_set__attribute_value__attribute'
-        )
-        
-        if self.request.user.is_staff:
-            # Staff can see all products including inactive ones
-            queryset = queryset
-        else:
-            # Regular users only see active products
-            queryset = queryset.filter(is_active=True)
-        
-        # Handle category filtering with subcategories
-        category_id = self.request.query_params.get('category')
-        if category_id:
-            try:
-                from .models import Category
-                category = Category.objects.get(id=category_id)
-                
-                # Get all descendant categories (subcategories at all levels)
-                category_ids = self.get_all_subcategories(category)
-                
-                # Filter products by the category and all its subcategories
-                queryset = queryset.filter(category_id__in=category_ids)
-            except Category.DoesNotExist:
-                # If category doesn't exist, return empty queryset
-                queryset = queryset.none()
-        
-        return queryset
-
     def get_serializer_class(self):
         """
         Return appropriate serializer based on action
@@ -455,31 +420,137 @@ class ProductViewSet(viewsets.ModelViewSet):
         else:
             return ProductDetailSerializer
 
+
     def get_permissions(self):
         """
         Read permissions for all, write permissions for staff only
         """
-        if self.action in ['list', 'retrieve', 'featured', 'best_sellers', 'new_arrivals', 'pocket_friendly', 'high_end', 'by_brand', 'by_category', 'search', 'price_range', 'product_collections', 'samsung_products', 'infinix_products']:
+        if self.action in ['list', 'retrieve', 'featured', 'best_sellers', 'new_arrivals', 'pocket_friendly', 'high_end', 'search', 'price_range', 'product_collections', 'samsung_products', 'infinix_products']:
             permission_classes = [permissions.AllowAny]
         else:
             permission_classes = [permissions.IsAdminUser]
         
         return [permission() for permission in permission_classes]
 
-    def list(self, request, *args, **kwargs):
-        """Override list method"""
-        # Get the queryset
-        queryset = self.filter_queryset(self.get_queryset())
+    def get_queryset(self):
+        """
+        Optionally restricts the returned products based on user permissions
+        """
+        queryset = Product.objects.select_related('category', 'brand').prefetch_related(
+            'tags', 
+            'reviews',
+            'variations__attribute_values__attribute',
+            'variations__attribute_values',
+            'variations__productvariationvalue_set__attribute_value__attribute'
+        )
         
-        # Apply pagination
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+        if self.request.user.is_staff:
+            queryset = queryset
+        else:
+            queryset = queryset.filter(is_active=True)
 
-        # No pagination
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+        request = self.request
+        # Handle category filtering by name (multiple categories supported)
+        category_names = request.query_params.getlist('category')
+        if category_names:
+            try:
+                from .models import Category
+                # Get all categories that match the names (case-insensitive)
+                categories = Category.objects.filter(
+                    name__in=[name.strip() for name in category_names]
+                )
+                
+                if categories.exists():
+                    # Get all subcategories for each category
+                    all_category_ids = []
+                    for category in categories:
+                        category_ids = self.get_all_subcategories(category)
+                        all_category_ids.extend(category_ids)
+                    
+                    # Remove duplicates
+                    all_category_ids = list(set(all_category_ids))
+                    
+                    # Filter products by the categories and all their subcategories
+                    queryset = queryset.filter(category_id__in=all_category_ids)
+                else:
+                    # If no categories found, return empty queryset
+                    queryset = queryset.none()
+                    
+            except Exception as e:
+                logger.error(f"Error filtering by category names: {str(e)}")
+                queryset = queryset.none()
+        
+        # Handle brand filtering by name (multiple brands supported)
+        brand_names = request.query_params.getlist('brand')
+        if brand_names:
+            try:
+                # Filter by brand names (case-insensitive)
+                brand_filters = Q()
+                for brand_name in brand_names:
+                    brand_filters |= Q(brand__name__iexact=brand_name.strip())
+                
+                queryset = queryset.filter(brand_filters)
+            except Exception as e:
+                logger.error(f"Error filtering by brand names: {str(e)}")
+        
+        # Now apply the standard DjangoFilterBackend filtering for other fields
+        for backend in list(self.filter_backends):
+            if backend != DjangoFilterBackend or (not category_names and not brand_names):
+                queryset = backend().filter_queryset(self.request, queryset, self)
+        
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        """Override list method to handle additional filtering"""
+        try:
+            # Get query parameters
+            min_price = request.query_params.get('min_price')
+            max_price = request.query_params.get('max_price')
+            search_query = request.query_params.get('search')
+            
+            # Start with the filtered queryset (already filtered by category/brand in filter_queryset)
+            queryset = self.filter_queryset(self.get_queryset())
+            
+            # Apply price filtering
+            if min_price:
+                try:
+                    queryset = queryset.filter(price__gte=float(min_price))
+                except ValueError:
+                    pass
+            
+            if max_price:
+                try:
+                    queryset = queryset.filter(price__lte=float(max_price))
+                except ValueError:
+                    pass
+            
+            # Apply search filtering (if not already handled by search_fields)
+            if search_query:
+                queryset = queryset.filter(
+                    Q(name__icontains=search_query) |
+                    Q(description__icontains=search_query) |
+                    Q(brand__name__icontains=search_query) |
+                    Q(category__name__icontains=search_query)
+                ).distinct()
+            
+            # Apply pagination
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            logger.error(f"Error in ProductViewSet list method: {str(e)}")
+            return Response({
+                'success': False,
+                'message': 'Unable to retrieve products',
+                'errors': {'non_field_errors': ['Please try again later']}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
     def retrieve(self, request, *args, **kwargs):
         """
@@ -643,115 +714,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response({
                 'success': False,
                 'message': 'Unable to retrieve high-end products',
-                'errors': {'non_field_errors': ['Please try again later']}
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @action(detail=False, methods=['get'])
-    def by_brand(self, request):
-        """Get products by brand"""
-        try:
-            brand_name = request.query_params.get('brand', None)
-            if not brand_name:
-                return Response({
-                    'success': False,
-                    'message': 'Brand parameter is required',
-                    'errors': {'brand': ['This field is required']}
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Filter products by brand name (case-insensitive)
-            brand_products = self.get_queryset().filter(
-                brand__name__icontains=brand_name
-            ).order_by('-created_at')
-            
-            # Pagination
-            page = self.paginate_queryset(brand_products)
-            if page is not None:
-                serializer = ProductListSerializer(page, many=True)
-                return self.get_paginated_response({
-                    'success': True,
-                    'products': serializer.data,
-                    'brand': brand_name
-                })
-            
-            serializer = ProductListSerializer(brand_products, many=True)
-            return Response({
-                'success': True,
-                'products': serializer.data,
-                'count': brand_products.count(),
-                'brand': brand_name
-            })
-        except Exception as e:
-            logger.error(f"Error retrieving products by brand: {str(e)}")
-            return Response({
-                'success': False,
-                'message': 'Unable to retrieve products by brand',
-                'errors': {'non_field_errors': ['Please try again later']}
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @action(detail=False, methods=['get'])
-    def by_category(self, request):
-        """Get products by category"""
-        try:
-            category_id = request.query_params.get('category_id', None)
-            category_name = request.query_params.get('category_name', None)
-            
-            if not category_id and not category_name:
-                return Response({
-                    'success': False,
-                    'message': 'Either category_id or category_name parameter is required',
-                    'errors': {'category': ['category_id or category_name is required']}
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Filter products by category (including subcategories)
-            if category_id:
-                try:
-                    from .models import Category
-                    category = Category.objects.get(id=category_id)
-                    category_ids = self.get_all_subcategories(category)
-                    category_products = self.get_queryset().filter(category_id__in=category_ids)
-                except Category.DoesNotExist:
-                    category_products = self.get_queryset().none()
-            else:
-                try:
-                    from .models import Category
-                    # Find category by name and include its subcategories
-                    category = Category.objects.filter(name__icontains=category_name).first()
-                    if category:
-                        category_ids = self.get_all_subcategories(category)
-                        category_products = self.get_queryset().filter(category_id__in=category_ids)
-                    else:
-                        category_products = self.get_queryset().none()
-                except Exception:
-                    category_products = self.get_queryset().filter(
-                        category__name__icontains=category_name
-                    )
-            
-            category_products = category_products.order_by('-created_at')
-            
-            # Pagination
-            page = self.paginate_queryset(category_products)
-            if page is not None:
-                serializer = ProductListSerializer(page, many=True)
-                return self.get_paginated_response({
-                    'success': True,
-                    'products': serializer.data,
-                    'category_id': category_id,
-                    'category_name': category_name
-                })
-            
-            serializer = ProductListSerializer(category_products, many=True)
-            return Response({
-                'success': True,
-                'products': serializer.data,
-                'count': category_products.count(),
-                'category_id': category_id,
-                'category_name': category_name
-            })
-        except Exception as e:
-            logger.error(f"Error retrieving products by category: {str(e)}")
-            return Response({
-                'success': False,
-                'message': 'Unable to retrieve products by category',
                 'errors': {'non_field_errors': ['Please try again later']}
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -1192,78 +1154,6 @@ class ProductViewSet(viewsets.ModelViewSet):
                 'errors': {'non_field_errors': ['Please try again later']}
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def list(self, request, *args, **kwargs):
-        """Override list method to add custom filtering including price range"""
-        try:
-            # Get query parameters
-            min_price = request.query_params.get('min_price')
-            max_price = request.query_params.get('max_price')
-            brand_ids = request.query_params.get('brand')
-            category_ids = request.query_params.get('category')
-            search_query = request.query_params.get('search')
-            
-            # Start with the base queryset
-            queryset = self.filter_queryset(self.get_queryset())
-            
-            # Apply price filtering
-            if min_price:
-                try:
-                    queryset = queryset.filter(price__gte=float(min_price))
-                except ValueError:
-                    pass
-            
-            if max_price:
-                try:
-                    queryset = queryset.filter(price__lte=float(max_price))
-                except ValueError:
-                    pass
-            
-            # Apply brand filtering (support multiple brands)
-            if brand_ids:
-                brand_id_list = [bid.strip() for bid in brand_ids.split(',') if bid.strip()]
-                if brand_id_list:
-                    try:
-                        brand_id_list = [int(bid) for bid in brand_id_list]
-                        queryset = queryset.filter(brand_id__in=brand_id_list)
-                    except ValueError:
-                        pass
-            
-            # Apply category filtering (support multiple categories)
-            if category_ids:
-                category_id_list = [cid.strip() for cid in category_ids.split(',') if cid.strip()]
-                if category_id_list:
-                    try:
-                        category_id_list = [int(cid) for cid in category_id_list]
-                        queryset = queryset.filter(category_id__in=category_id_list)
-                    except ValueError:
-                        pass
-            
-            # Apply search filtering
-            if search_query:
-                queryset = queryset.filter(
-                    Q(name__icontains=search_query) |
-                    Q(description__icontains=search_query) |
-                    Q(brand__name__icontains=search_query) |
-                    Q(category__name__icontains=search_query)
-                ).distinct()
-            
-            # Apply pagination
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
-            
-            serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data)
-            
-        except Exception as e:
-            logger.error(f"Error in ProductViewSet list method: {str(e)}")
-            return Response({
-                'success': False,
-                'message': 'Unable to retrieve products',
-                'errors': {'non_field_errors': ['Please try again later']}
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
     def create(self, request, *args, **kwargs):
         """
         Override create method to add debug logging and handle image uploads
@@ -1460,6 +1350,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                 'message': 'Failed to clear images',
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 class ProductVariationViewSet(viewsets.ModelViewSet):
