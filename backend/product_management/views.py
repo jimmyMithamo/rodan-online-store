@@ -1526,3 +1526,27 @@ class ProductImageViewSet(viewsets.ModelViewSet):
                 'message': 'Unable to retrieve variation images',
                 'errors': {'non_field_errors': ['Please try again later']}
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class BannerViewSet(viewsets.ModelViewSet):
+    queryset = Banner.objects.filter(is_active=True)
+    serializer_class = BannerSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields = ['title', 'description']
+    ordering_fields = ['display_order', 'created_at']
+    ordering = ['display_order', 'created_at']
+
+    def get_permissions(self):
+        """
+        Read permissions for all, write permissions for staff only
+        """
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [permissions.AllowAny]
+        else:
+            permission_classes = [permissions.IsAdminUser]
+        
+        return [permission() for permission in permission_classes]
+    
+    
