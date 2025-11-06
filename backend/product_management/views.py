@@ -393,7 +393,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['brand', 'product_type', 'is_active', 'tags']
+    filterset_fields = ['product_type', 'is_active', 'tags']
     search_fields = ['name', 'brand__name', 'description', 'sku', 'category__name']
     ordering_fields = ['name', 'brand__name', 'price', 'rating', 'created_at', 'product_views', 'quantity_sold']
     ordering = ['-created_at']
