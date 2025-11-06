@@ -135,11 +135,8 @@ class ProductVariationValueSerializer(serializers.ModelSerializer):
         model = ProductVariationValue
         fields = ['id', 'attribute_name', 'value']
 
-
 class ProductVariationSerializer(serializers.ModelSerializer):
-    variations_attributes = ProductVariationValueSerializer(
-        source='productvariationvalue_set', many=True, read_only=True
-    )
+    variations_attributes = serializers.SerializerMethodField()  # Change this to SerializerMethodField
     attribute_values = serializers.ListField(
         child=serializers.IntegerField(), write_only=True, required=False
     )
@@ -156,6 +153,20 @@ class ProductVariationSerializer(serializers.ModelSerializer):
             'variations_attributes', 'attribute_values', 'display_attributes', 'effective_images',
             'is_in_stock', 'is_active', 'created_at', 'updated_at'
         ]
+
+    def get_variations_attributes(self, obj):
+        """Get variation attributes through ProductVariationValue relationships"""
+        variation_values = obj.productvariationvalue_set.all().select_related('attribute_value__attribute')
+        attributes_data = []
+        
+        for variation_value in variation_values:
+            attributes_data.append({
+                'id': variation_value.id,
+                'attribute_name': variation_value.attribute_value.attribute.name,
+                'value': variation_value.attribute_value.value
+            })
+        
+        return attributes_data
 
     def create(self, validated_data):
         attribute_values = validated_data.pop('attribute_values', [])
@@ -300,12 +311,37 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_attributes(self, obj):
-        """Get attributes for variable products"""
+        """Get attributes for variable products - only show attributes used in variations"""
         if obj.product_type != 'variable':
             return []
-        # Now we can safely use the ManyToMany field since the property conflict is resolved
-        return ProductAttributeSerializer(obj.attributes.all(), many=True).data
-
+        
+        # Get all variation attributes used in this product's variations
+        used_attribute_values = set()
+        for variation in obj.variations.all():
+            # Access through the ProductVariationValue relationships
+            for variation_value in variation.productvariationvalue_set.all():
+                attribute_name = variation_value.attribute_value.attribute.name
+                attribute_value = variation_value.attribute_value.value
+                used_attribute_values.add((attribute_name, attribute_value))
+        
+        # Filter attributes to only include used values
+        attributes_data = []
+        for attribute in obj.attributes.all():
+            used_values = [
+                value for value in attribute.values.all()
+                if (attribute.name, value.value) in used_attribute_values
+            ]
+            
+            if used_values:  # Only include attributes that have used values
+                attributes_data.append({
+                    'id': attribute.id,
+                    'name': attribute.name,
+                    'values': AttributeValueSerializer(used_values, many=True).data,  # Use AttributeValueSerializer
+                    'created_at': attribute.created_at
+                })
+    
+        return attributes_data
+    
     def get_reviews(self, obj):
         """Return approved reviews"""
         approved_reviews = obj.reviews.filter(is_approved=True)
