@@ -1158,31 +1158,31 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         Override create method to add debug logging and handle image uploads
         """
-        logger.debug(f"🔧 DEBUG: ProductViewSet.create() called")
-        logger.debug(f"🔧 DEBUG: Request data: {request.data}")
+        logger.debug(f" DEBUG: ProductViewSet.create() called")
+        logger.debug(f" DEBUG: Request data: {request.data}")
         
         # Extract image files from request
         image_files = []
         for key, value in request.FILES.items():
             if key.startswith('image_'):
                 image_files.append(value)
-                logger.debug(f"🔧 DEBUG: Found image file: {key} -> {value.name}")
+                logger.debug(f" DEBUG: Found image file: {key} -> {value.name}")
         
         serializer = self.get_serializer(data=request.data)
-        logger.debug(f"🔧 DEBUG: Serializer created, checking validity")
+        logger.debug(f" DEBUG: Serializer created, checking validity")
         
         try:
             if serializer.is_valid():
-                logger.debug(f"🔧 DEBUG: Serializer is valid, saving...")
-                logger.debug(f"🔧 DEBUG: Validated data: {serializer.validated_data}")
+                logger.debug(f" DEBUG: Serializer is valid, saving...")
+                logger.debug(f" DEBUG: Validated data: {serializer.validated_data}")
                 
                 # Save the product first
                 product = serializer.save()
-                logger.debug(f"🔧 DEBUG: Product saved with ID: {product.id}")
+                logger.debug(f" DEBUG: Product saved with ID: {product.id}")
                 
                 # Handle image uploads
                 if image_files:
-                    logger.debug(f"🔧 DEBUG: Processing {len(image_files)} image files")
+                    logger.debug(f" DEBUG: Processing {len(image_files)} image files")
                     self._handle_image_uploads(product, image_files)
                     
                     # Refresh the product instance to get updated images
@@ -1193,20 +1193,19 @@ class ProductViewSet(viewsets.ModelViewSet):
                 fresh_serializer = self.get_serializer(product)
                 return Response(fresh_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
             else:
-                logger.debug(f"🔧 DEBUG: Serializer validation failed")
-                logger.debug(f"🔧 DEBUG: Serializer errors: {serializer.errors}")
+                logger.debug(f" DEBUG: Serializer validation failed")
+                logger.debug(f" DEBUG: Serializer errors: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"🔧 DEBUG: Exception in create: {e}")
+            logger.error(f"DEBUG: Exception in create: {e}")
             raise
 
     def update(self, request, *args, **kwargs):
         """
         Override update method to add debug logging and handle image uploads
         """
-        logger.debug(f"🔧 DEBUG: ProductViewSet.update() called")
-        logger.debug(f"🔧 DEBUG: Request data: {request.data}")
-        print("[FRONTEND PAYLOAD]", dict(request.data))
+        logger.debug(f"DEBUG: ProductViewSet.update() called")
+        logger.debug(f"DEBUG: Request data: {request.data}")
 
         partial = kwargs.pop('partial', False)
         
@@ -1214,41 +1213,41 @@ class ProductViewSet(viewsets.ModelViewSet):
         # This helps with step-by-step product creation workflow
         if not partial and len(request.data) <= 5:  # Small number of fields suggests partial update
             partial = True
-            logger.debug(f"🔧 DEBUG: Forcing partial update due to limited fields: {list(request.data.keys())}")
+            logger.debug(f" DEBUG: Forcing partial update due to limited fields: {list(request.data.keys())}")
         
         instance = self.get_object()
 
-        logger.debug(f"🔧 DEBUG: Updating product: {instance.name} (ID: {instance.id})")
-        logger.debug(f"🔧 DEBUG: Current product type: {instance.product_type}")
-        logger.debug(f"🔧 DEBUG: Current price: {instance.price}")
+        logger.debug(f" DEBUG: Updating product: {instance.name} (ID: {instance.id})")
+        logger.debug(f" DEBUG: Current product type: {instance.product_type}")
+        logger.debug(f" DEBUG: Current price: {instance.price}")
 
         # Extract image files from request
         image_files = []
         for key, value in request.FILES.items():
             if key.startswith('image_'):
                 image_files.append(value)
-                logger.debug(f"🔧 DEBUG: Found image file: {key} -> {value.name}")
+                logger.debug(f" DEBUG: Found image file: {key} -> {value.name}")
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        logger.debug(f"🔧 DEBUG: Serializer created, checking validity")
+        logger.debug(f" DEBUG: Serializer created, checking validity")
         
         try:
             if serializer.is_valid():
-                logger.debug(f"🔧 DEBUG: Serializer is valid, saving...")
-                logger.debug(f"🔧 DEBUG: Validated data: {serializer.validated_data}")
+                logger.debug(f" DEBUG: Serializer is valid, saving...")
+                logger.debug(f" DEBUG: Validated data: {serializer.validated_data}")
                 
                 # Save the product
                 product = serializer.save()
-                logger.debug(f"🔧 DEBUG: Product updated")
+                logger.debug(f" DEBUG: Product updated")
                 
                 # Check if we should clear all existing images
                 clear_existing = request.data.get('clear_existing_images')
                 if clear_existing and clear_existing.lower() == 'true':
-                    logger.debug(f"🔧 DEBUG: Clearing all existing images for product {product.id}")
+                    logger.debug(f" DEBUG: Clearing all existing images for product {product.id}")
                     from .models import ProductImage
                     deleted_count = ProductImage.objects.filter(product=product).count()
                     ProductImage.objects.filter(product=product).delete()
-                    logger.debug(f"🔧 DEBUG: Cleared {deleted_count} existing images")
+                    logger.debug(f" DEBUG: Cleared {deleted_count} existing images")
                 
                 # Handle removed images (for individual removals)
                 removed_image_ids = request.data.get('removed_image_ids')
@@ -1256,17 +1255,17 @@ class ProductViewSet(viewsets.ModelViewSet):
                     try:
                         import json
                         removed_ids = json.loads(removed_image_ids) if isinstance(removed_image_ids, str) else removed_image_ids
-                        logger.debug(f"🔧 DEBUG: Removing images with IDs: {removed_ids}")
+                        logger.debug(f" DEBUG: Removing images with IDs: {removed_ids}")
                         
                         from .models import ProductImage
                         ProductImage.objects.filter(id__in=removed_ids, product=product).delete()
-                        logger.debug(f"🔧 DEBUG: Removed {len(removed_ids)} images")
+                        logger.debug(f" DEBUG: Removed {len(removed_ids)} images")
                     except Exception as e:
-                        logger.error(f"🔧 DEBUG: Error removing images: {e}")
+                        logger.error(f" DEBUG: Error removing images: {e}")
                 
                 # Handle image uploads (add new images, don't remove existing ones)
                 if image_files:
-                    logger.debug(f"🔧 DEBUG: Processing {len(image_files)} new image files")
+                    logger.debug(f" DEBUG: Processing {len(image_files)} new image files")
                     self._handle_image_uploads(product, image_files)
                     
                     # Refresh the product instance to get updated images
@@ -1283,11 +1282,11 @@ class ProductViewSet(viewsets.ModelViewSet):
                 # product_attributes = ProductAttributeSerializer(many=True, read_only=True)
                 return Response(fresh_serializer.data)
             else:
-                logger.debug(f"🔧 DEBUG: Serializer validation failed")
-                logger.debug(f"🔧 DEBUG: Serializer errors: {serializer.errors}")
+                logger.debug(f" DEBUG: Serializer validation failed")
+                logger.debug(f" DEBUG: Serializer errors: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"🔧 DEBUG: Exception in update: {e}")
+            logger.error(f" DEBUG: Exception in update: {e}")
             # Instead of raising, return a proper error response
             return Response({
                 'success': False,
@@ -1301,7 +1300,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         from .models import ProductImage
         
-        logger.debug(f"🔧 DEBUG: Creating ProductImage objects for product {product.id}")
+        logger.debug(f" DEBUG: Creating ProductImage objects for product {product.id}")
         
         for i, image_file in enumerate(image_files):
             try:
@@ -1316,10 +1315,10 @@ class ProductViewSet(viewsets.ModelViewSet):
                     alt_text=f"{product.name} - Image {i + 1}"
                 )
                 
-                logger.debug(f"🔧 DEBUG: Created ProductImage {product_image.id} for {image_file.name}")
+                logger.debug(f" DEBUG: Created ProductImage {product_image.id} for {image_file.name}")
                 
             except Exception as e:
-                logger.error(f"🔧 DEBUG: Failed to create ProductImage for {image_file.name}: {e}")
+                logger.error(f" DEBUG: Failed to create ProductImage for {image_file.name}: {e}")
                 # Continue with other images even if one fails
                 continue
 
@@ -1335,7 +1334,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             deleted_count = ProductImage.objects.filter(product=product).count()
             ProductImage.objects.filter(product=product).delete()
             
-            logger.debug(f"🔧 DEBUG: Cleared {deleted_count} images for product {product.id}")
+            logger.debug(f" DEBUG: Cleared {deleted_count} images for product {product.id}")
             
             return Response({
                 'success': True,
